@@ -1,14 +1,99 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Docs</title>
+    <title>Auto Save Docs</title>
 </head>
-<body style="background:#111;color:white;text-align:center;font-family:Arial;">
 
-<h1>📄 Docs Page</h1>
-<p>This page is working.</p>
+<body style="font-family:Arial;background:#111;color:white;text-align:center;">
 
-<a href="index.html" style="color:lightgreen;">Back to Home</a>
+<h1>📄 Auto-Save Docs</h1>
+
+<div id="auth">
+    <input id="email" placeholder="Email"><br><br>
+    <input id="password" type="password" placeholder="Password"><br><br>
+    <button onclick="login()">Login</button>
+    <p id="msg"></p>
+</div>
+
+<div id="app" style="display:none;">
+    <textarea id="text" style="width:90%;height:300px;"></textarea>
+    <p id="status">Not saved</p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+    // 🔴 PUT YOUR CONFIG HERE
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.database();
+
+let saveTimeout;
+
+/* LOGIN */
+function login() {
+    const email = document.getElementById("email").value;
+    const pass = document.getElementById("password").value;
+
+    auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        load();
+        startAutoSave();
+    })
+    .catch(err => {
+        document.getElementById("msg").innerText = err.message;
+    });
+}
+
+/* LOAD */
+function load() {
+    const user = auth.currentUser;
+
+    db.ref("docs/" + user.uid).on("value", snap => {
+        if (snap.exists()) {
+            document.getElementById("text").value = snap.val().text;
+        }
+    });
+}
+
+/* AUTO SAVE */
+function startAutoSave() {
+    const user = auth.currentUser;
+    const textBox = document.getElementById("text");
+
+    textBox.addEventListener("input", () => {
+        document.getElementById("status").innerText = "Saving...";
+
+        clearTimeout(saveTimeout);
+
+        saveTimeout = setTimeout(() => {
+            db.ref("docs/" + user.uid).set({
+                text: textBox.value
+            });
+
+            document.getElementById("status").innerText = "Saved ✔";
+        }, 800); // waits 0.8s after typing
+    });
+}
+
+/* AUTH STATE */
+auth.onAuthStateChanged(user => {
+    if (user) {
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("app").style.display = "block";
+        load();
+        startAutoSave();
+    }
+});
+</script>
 
 </body>
 </html>
