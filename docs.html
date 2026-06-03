@@ -14,39 +14,71 @@
 
         /* SIDEBAR */
         #sidebar {
-            width: 250px;
+            width: 260px;
             background: #1a1a1a;
             padding: 10px;
             overflow-y: auto;
         }
 
+        h3 {
+            margin: 10px 0;
+        }
+
+        input {
+            width: 90%;
+            padding: 6px;
+            margin: 5px 0;
+        }
+
         button {
             width: 100%;
-            margin: 5px 0;
-            padding: 10px;
+            margin: 4px 0;
+            padding: 8px;
             cursor: pointer;
+            background: #333;
+            color: white;
+            border: none;
+        }
+
+        button:hover {
+            background: #444;
+        }
+
+        .delete {
+            background: #aa3333;
+        }
+
+        .delete:hover {
+            background: #cc4444;
         }
 
         /* MAIN */
         #main {
             flex: 1;
             padding: 10px;
+            display: flex;
+            flex-direction: column;
         }
 
         textarea {
+            flex: 1;
             width: 100%;
-            height: 80%;
             background: #222;
             color: white;
             border: none;
             padding: 10px;
             font-size: 14px;
+            margin-top: 10px;
         }
 
-        input {
-            width: 90%;
-            padding: 5px;
-            margin: 5px 0;
+        .row {
+            display: flex;
+            gap: 5px;
+        }
+
+        .row button {
+            width: auto;
+            flex: 1;
         }
     </style>
 </head>
@@ -61,16 +93,22 @@
     <button onclick="createFolder()">➕ Add Folder</button>
 
     <div id="folderList"></div>
+
+    <hr>
+
+    <h3>📄 Docs</h3>
+
+    <input id="docName" placeholder="New doc">
+    <button onclick="createDoc()">➕ Add Doc</button>
+
+    <div id="docList"></div>
 </div>
 
 <!-- MAIN -->
 <div id="main">
-    <h2 id="title">Select a folder</h2>
+    <h3 id="title">Select a folder + doc</h3>
 
-    <input id="docName" placeholder="Doc name">
-    <button onclick="createDoc()">➕ Add Doc</button>
-
-    <textarea id="text"></textarea>
+    <textarea id="text" placeholder="Select a doc..."></textarea>
 </div>
 
 <!-- FIREBASE -->
@@ -80,7 +118,7 @@
 
 <script>
 const firebaseConfig = {
-    // 🔴 your config here
+    // 🔴 YOUR CONFIG HERE
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -91,28 +129,25 @@ const db = firebase.database();
 let currentFolder = null;
 let currentDoc = null;
 
-/* LOGIN AUTO (assumes already logged in from your system) */
+/* AUTH */
 auth.onAuthStateChanged(user => {
     if (user) {
         loadFolders();
     }
 });
 
-/* CREATE FOLDER */
+/* ---------------- FOLDERS ---------------- */
+
 function createFolder() {
     const user = auth.currentUser;
     const name = document.getElementById("folderName").value;
-
     if (!name) return;
 
-    db.ref("docs/" + user.uid + "/folders/" + name).set({
-        created: true
-    });
+    db.ref("docs/" + user.uid + "/folders/" + name).set({});
 
     loadFolders();
 }
 
-/* LOAD FOLDERS */
 function loadFolders() {
     const user = auth.currentUser;
 
@@ -120,31 +155,45 @@ function loadFolders() {
         const list = document.getElementById("folderList");
         list.innerHTML = "";
 
-        snap.forEach(folder => {
-            const name = folder.key;
+        snap.forEach(f => {
+            const name = f.key;
+
+            const wrap = document.createElement("div");
 
             const btn = document.createElement("button");
             btn.innerText = "📁 " + name;
             btn.onclick = () => openFolder(name);
 
-            list.appendChild(btn);
+            const del = document.createElement("button");
+            del.innerText = "🗑 Delete";
+            del.className = "delete";
+            del.onclick = () => {
+                db.ref("docs/" + user.uid + "/folders/" + name).remove();
+                if (currentFolder === name) {
+                    currentFolder = null;
+                    document.getElementById("docList").innerHTML = "";
+                    document.getElementById("text").value = "";
+                }
+            };
+
+            wrap.appendChild(btn);
+            wrap.appendChild(del);
+            list.appendChild(wrap);
         });
     });
 }
 
-/* OPEN FOLDER */
+/* ---------------- DOCS ---------------- */
+
 function openFolder(name) {
     currentFolder = name;
     document.getElementById("title").innerText = "📁 " + name;
-
     loadDocs();
 }
 
-/* CREATE DOC */
 function createDoc() {
     const user = auth.currentUser;
     const name = document.getElementById("docName").value;
-
     if (!currentFolder || !name) return;
 
     db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).set({
@@ -154,35 +203,48 @@ function createDoc() {
     loadDocs();
 }
 
-/* LOAD DOCS */
 function loadDocs() {
     const user = auth.currentUser;
 
     db.ref("docs/" + user.uid + "/folders/" + currentFolder).on("value", snap => {
-        const main = document.getElementById("main");
+        const list = document.getElementById("docList");
+        list.innerHTML = "";
 
-        snap.forEach(doc => {
-            const name = doc.key;
+        snap.forEach(d => {
+            const name = d.key;
+            if (name === ".priority") return;
 
-            if (name === "created") return;
+            const wrap = document.createElement("div");
 
             const btn = document.createElement("button");
             btn.innerText = "📄 " + name;
             btn.onclick = () => openDoc(name);
 
-            main.appendChild(btn);
+            const del = document.createElement("button");
+            del.innerText = "🗑 Delete";
+            del.className = "delete";
+            del.onclick = () => {
+                db.ref("docs/" + auth.currentUser.uid + "/folders/" + currentFolder + "/" + name).remove();
+                document.getElementById("text").value = "";
+            };
+
+            wrap.appendChild(btn);
+            wrap.appendChild(del);
+            list.appendChild(wrap);
         });
     });
 }
 
-/* OPEN DOC */
+/* ---------------- OPEN DOC ---------------- */
+
 function openDoc(name) {
     currentDoc = name;
 
     const user = auth.currentUser;
 
-    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).once("value", snap => {
-        document.getElementById("text").value = snap.val().text || "";
+    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name)
+    .on("value", snap => {
+        document.getElementById("text").value = snap.val()?.text || "";
     });
 
     document.getElementById("text").oninput = () => {
@@ -191,104 +253,6 @@ function openDoc(name) {
         });
     };
 }
-</script>
-
-</body>
-</html><!DOCTYPE html>
-<html>
-<head>
-    <title>Auto Save Docs</title>
-</head>
-
-<body style="font-family:Arial;background:#111;color:white;text-align:center;">
-
-<h1>📄 Auto-Save Docs</h1>
-
-<div id="auth">
-    <input id="email" placeholder="Email"><br><br>
-    <input id="password" type="password" placeholder="Password"><br><br>
-    <button onclick="login()">Login</button>
-    <p id="msg"></p>
-</div>
-
-<div id="app" style="display:none;">
-    <textarea id="text" style="width:90%;height:300px;"></textarea>
-    <p id="status">Not saved</p>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
-
-<script>
-const firebaseConfig = {
-    // 🔴 PUT YOUR CONFIG HERE
-};
-
-firebase.initializeApp(firebaseConfig);
-
-const auth = firebase.auth();
-const db = firebase.database();
-
-let saveTimeout;
-
-/* LOGIN */
-function login() {
-    const email = document.getElementById("email").value;
-    const pass = document.getElementById("password").value;
-
-    auth.signInWithEmailAndPassword(email, pass)
-    .then(() => {
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("app").style.display = "block";
-        load();
-        startAutoSave();
-    })
-    .catch(err => {
-        document.getElementById("msg").innerText = err.message;
-    });
-}
-
-/* LOAD */
-function load() {
-    const user = auth.currentUser;
-
-    db.ref("docs/" + user.uid).on("value", snap => {
-        if (snap.exists()) {
-            document.getElementById("text").value = snap.val().text;
-        }
-    });
-}
-
-/* AUTO SAVE */
-function startAutoSave() {
-    const user = auth.currentUser;
-    const textBox = document.getElementById("text");
-
-    textBox.addEventListener("input", () => {
-        document.getElementById("status").innerText = "Saving...";
-
-        clearTimeout(saveTimeout);
-
-        saveTimeout = setTimeout(() => {
-            db.ref("docs/" + user.uid).set({
-                text: textBox.value
-            });
-
-            document.getElementById("status").innerText = "Saved ✔";
-        }, 800); // waits 0.8s after typing
-    });
-}
-
-/* AUTH STATE */
-auth.onAuthStateChanged(user => {
-    if (user) {
-        document.getElementById("auth").style.display = "none";
-        document.getElementById("app").style.display = "block";
-        load();
-        startAutoSave();
-    }
-});
 </script>
 
 </body>
