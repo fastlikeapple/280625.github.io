@@ -1,84 +1,94 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Docs Hub</title>
+    <title>Notion Docs</title>
     <style>
         body {
             margin: 0;
             font-family: Arial;
+            background: #0f0f0f;
+            color: white;
             display: flex;
             height: 100vh;
-            background: #111;
-            color: white;
         }
 
         /* SIDEBAR */
         #sidebar {
             width: 260px;
-            background: #1a1a1a;
-            padding: 10px;
+            background: #171717;
+            padding: 12px;
             overflow-y: auto;
+            border-right: 1px solid #2a2a2a;
         }
 
         h3 {
+            font-size: 14px;
+            color: #aaa;
             margin: 10px 0;
         }
 
         input {
-            width: 90%;
-            padding: 6px;
+            width: 100%;
+            padding: 8px;
             margin: 5px 0;
+            background: #222;
+            border: none;
+            color: white;
+            border-radius: 6px;
         }
 
         button {
             width: 100%;
-            margin: 4px 0;
             padding: 8px;
-            cursor: pointer;
-            background: #333;
-            color: white;
+            margin: 4px 0;
+            background: #222;
             border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 6px;
+            text-align: left;
         }
 
         button:hover {
-            background: #444;
+            background: #2a2a2a;
         }
 
         .delete {
-            background: #aa3333;
+            background: #3a1f1f;
         }
 
         .delete:hover {
-            background: #cc4444;
+            background: #5a2a2a;
         }
 
         /* MAIN */
         #main {
             flex: 1;
-            padding: 10px;
             display: flex;
             flex-direction: column;
         }
 
+        #topbar {
+            padding: 10px;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            gap: 10px;
+        }
+
         textarea {
             flex: 1;
-            width: 100%;
-            background: #222;
-            color: white;
+            background: #0f0f0f;
             border: none;
-            padding: 10px;
-            font-size: 14px;
-            margin-top: 10px;
+            color: white;
+            padding: 20px;
+            font-size: 16px;
+            outline: none;
+            resize: none;
         }
 
-        .row {
-            display: flex;
-            gap: 5px;
-        }
-
-        .row button {
-            width: auto;
-            flex: 1;
+        .title {
+            font-size: 16px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -87,28 +97,28 @@
 
 <!-- SIDEBAR -->
 <div id="sidebar">
-    <h3>📁 Folders</h3>
+    <h3>📁 FOLDERS</h3>
 
     <input id="folderName" placeholder="New folder">
-    <button onclick="createFolder()">➕ Add Folder</button>
+    <button onclick="createFolder()">+ New Folder</button>
 
     <div id="folderList"></div>
 
-    <hr>
-
-    <h3>📄 Docs</h3>
+    <h3>📄 DOCS</h3>
 
     <input id="docName" placeholder="New doc">
-    <button onclick="createDoc()">➕ Add Doc</button>
+    <button onclick="createDoc()">+ New Doc</button>
 
     <div id="docList"></div>
 </div>
 
 <!-- MAIN -->
 <div id="main">
-    <h3 id="title">Select a folder + doc</h3>
+    <div id="topbar">
+        <div class="title" id="title">Select a doc</div>
+    </div>
 
-    <textarea id="text" placeholder="Select a doc..."></textarea>
+    <textarea id="text" placeholder="Start typing..."></textarea>
 </div>
 
 <!-- FIREBASE -->
@@ -118,7 +128,7 @@
 
 <script>
 const firebaseConfig = {
-    // 🔴 YOUR CONFIG HERE
+    // 🔴 your config here
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -131,9 +141,7 @@ let currentDoc = null;
 
 /* AUTH */
 auth.onAuthStateChanged(user => {
-    if (user) {
-        loadFolders();
-    }
+    if (user) loadFolders();
 });
 
 /* ---------------- FOLDERS ---------------- */
@@ -144,7 +152,6 @@ function createFolder() {
     if (!name) return;
 
     db.ref("docs/" + user.uid + "/folders/" + name).set({});
-
     loadFolders();
 }
 
@@ -169,11 +176,6 @@ function loadFolders() {
             del.className = "delete";
             del.onclick = () => {
                 db.ref("docs/" + user.uid + "/folders/" + name).remove();
-                if (currentFolder === name) {
-                    currentFolder = null;
-                    document.getElementById("docList").innerHTML = "";
-                    document.getElementById("text").value = "";
-                }
             };
 
             wrap.appendChild(btn);
@@ -187,7 +189,6 @@ function loadFolders() {
 
 function openFolder(name) {
     currentFolder = name;
-    document.getElementById("title").innerText = "📁 " + name;
     loadDocs();
 }
 
@@ -196,9 +197,8 @@ function createDoc() {
     const name = document.getElementById("docName").value;
     if (!currentFolder || !name) return;
 
-    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).set({
-        text: ""
-    });
+    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name)
+    .set({ text: "" });
 
     loadDocs();
 }
@@ -206,7 +206,8 @@ function createDoc() {
 function loadDocs() {
     const user = auth.currentUser;
 
-    db.ref("docs/" + user.uid + "/folders/" + currentFolder).on("value", snap => {
+    db.ref("docs/" + user.uid + "/folders/" + currentFolder)
+    .on("value", snap => {
         const list = document.getElementById("docList");
         list.innerHTML = "";
 
@@ -225,7 +226,6 @@ function loadDocs() {
             del.className = "delete";
             del.onclick = () => {
                 db.ref("docs/" + auth.currentUser.uid + "/folders/" + currentFolder + "/" + name).remove();
-                document.getElementById("text").value = "";
             };
 
             wrap.appendChild(btn);
@@ -235,20 +235,24 @@ function loadDocs() {
     });
 }
 
-/* ---------------- OPEN DOC ---------------- */
+/* ---------------- DOC ---------------- */
 
 function openDoc(name) {
     currentDoc = name;
 
     const user = auth.currentUser;
 
-    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name)
-    .on("value", snap => {
+    document.getElementById("title").innerText =
+        currentFolder + " / " + name;
+
+    const ref = db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name);
+
+    ref.on("value", snap => {
         document.getElementById("text").value = snap.val()?.text || "";
     });
 
     document.getElementById("text").oninput = () => {
-        db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).set({
+        ref.set({
             text: document.getElementById("text").value
         });
     };
