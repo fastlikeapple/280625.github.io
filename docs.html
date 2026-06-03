@@ -1,6 +1,202 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <title>Docs Hub</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            display: flex;
+            height: 100vh;
+            background: #111;
+            color: white;
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: 250px;
+            background: #1a1a1a;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        button {
+            width: 100%;
+            margin: 5px 0;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        /* MAIN */
+        #main {
+            flex: 1;
+            padding: 10px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 80%;
+            background: #222;
+            color: white;
+            border: none;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        input {
+            width: 90%;
+            padding: 5px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div id="sidebar">
+    <h3>📁 Folders</h3>
+
+    <input id="folderName" placeholder="New folder">
+    <button onclick="createFolder()">➕ Add Folder</button>
+
+    <div id="folderList"></div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+    <h2 id="title">Select a folder</h2>
+
+    <input id="docName" placeholder="Doc name">
+    <button onclick="createDoc()">➕ Add Doc</button>
+
+    <textarea id="text"></textarea>
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+const firebaseConfig = {
+    // 🔴 your config here
+};
+
+firebase.initializeApp(firebaseConfig);
+
+const auth = firebase.auth();
+const db = firebase.database();
+
+let currentFolder = null;
+let currentDoc = null;
+
+/* LOGIN AUTO (assumes already logged in from your system) */
+auth.onAuthStateChanged(user => {
+    if (user) {
+        loadFolders();
+    }
+});
+
+/* CREATE FOLDER */
+function createFolder() {
+    const user = auth.currentUser;
+    const name = document.getElementById("folderName").value;
+
+    if (!name) return;
+
+    db.ref("docs/" + user.uid + "/folders/" + name).set({
+        created: true
+    });
+
+    loadFolders();
+}
+
+/* LOAD FOLDERS */
+function loadFolders() {
+    const user = auth.currentUser;
+
+    db.ref("docs/" + user.uid + "/folders").on("value", snap => {
+        const list = document.getElementById("folderList");
+        list.innerHTML = "";
+
+        snap.forEach(folder => {
+            const name = folder.key;
+
+            const btn = document.createElement("button");
+            btn.innerText = "📁 " + name;
+            btn.onclick = () => openFolder(name);
+
+            list.appendChild(btn);
+        });
+    });
+}
+
+/* OPEN FOLDER */
+function openFolder(name) {
+    currentFolder = name;
+    document.getElementById("title").innerText = "📁 " + name;
+
+    loadDocs();
+}
+
+/* CREATE DOC */
+function createDoc() {
+    const user = auth.currentUser;
+    const name = document.getElementById("docName").value;
+
+    if (!currentFolder || !name) return;
+
+    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).set({
+        text: ""
+    });
+
+    loadDocs();
+}
+
+/* LOAD DOCS */
+function loadDocs() {
+    const user = auth.currentUser;
+
+    db.ref("docs/" + user.uid + "/folders/" + currentFolder).on("value", snap => {
+        const main = document.getElementById("main");
+
+        snap.forEach(doc => {
+            const name = doc.key;
+
+            if (name === "created") return;
+
+            const btn = document.createElement("button");
+            btn.innerText = "📄 " + name;
+            btn.onclick = () => openDoc(name);
+
+            main.appendChild(btn);
+        });
+    });
+}
+
+/* OPEN DOC */
+function openDoc(name) {
+    currentDoc = name;
+
+    const user = auth.currentUser;
+
+    db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).once("value", snap => {
+        document.getElementById("text").value = snap.val().text || "";
+    });
+
+    document.getElementById("text").oninput = () => {
+        db.ref("docs/" + user.uid + "/folders/" + currentFolder + "/" + name).set({
+            text: document.getElementById("text").value
+        });
+    };
+}
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
     <title>Auto Save Docs</title>
 </head>
 
