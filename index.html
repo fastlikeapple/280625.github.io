@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>280625 Hub</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: white;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        #login {
+            margin-top: 120px;
+        }
+
+        #main {
+            display: none;
+            padding-top: 80px;
+        }
+
+        .box {
+            background: #222;
+            display: inline-block;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 200px;
+            margin-top: 10px;
+            border: none;
+            border-radius: 6px;
+        }
+
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 6px;
+            background: #4caf50;
+            color: white;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        a {
+            color: lightgreen;
+            text-decoration: none;
+            display: block;
+            margin-top: 10px;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<div id="login">
+    <div class="box">
+        <h1>Locked</h1>
+        <p>Enter Password</p>
+
+        <input type="password" id="pass" placeholder="Password">
+        <br>
+        <button onclick="login()">Enter</button>
+
+        <p id="msg"></p>
+    </div>
+</div>
+
+<div id="main">
+    <h1>280625 Hub</h1>
+
+    <a href="docs.html">📄 Docs</a>
+</div>
+
+<script>
+function login() {
+    const password = document.getElementById("pass").value;
+
+    if (password === "21HXyGo?uM72") {
+        document.getElementById("login").style.display = "none";
+        document.getElementById("main").style.display = "block";
+    } else {
+        document.getElementById("msg").innerText = "Wrong password!";
+    }
+}
+</script>
+
+</body>
+</html>
